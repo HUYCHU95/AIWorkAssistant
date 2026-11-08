@@ -33,11 +33,11 @@ public class TrackingController(WorkDb db,TrackingService service):ManagementCon
 public class SourcesController(WorkDb db,TrackingService service):ManagementController(db)
 {
     public async Task<IActionResult> Index(string? q)=>View(await Db.Sources.Where(s=>s.ArchivedAtUtc==null&&(q==null||s.Title.Contains(q)||s.OriginalText.Contains(q))).OrderByDescending(s=>s.CreatedAtUtc).Take(100).ToListAsync());
-    public async Task<IActionResult> Details(Guid id){var source=await Db.Sources.FindAsync(id);if(source==null)return NotFound();ViewBag.Links=await Db.SourceLinks.Where(l=>l.SourceId==id&&l.ArchivedAtUtc==null).ToListAsync();await History(id);return View(source);}
+    public async Task<IActionResult> Details(Guid id){var source=await Db.Sources.FindAsync(id);if(source==null)return NotFound();ViewBag.Links=await Db.SourceLinks.Where(l=>l.SourceId==id&&l.ArchivedAtUtc==null).ToListAsync();ViewBag.Documents=await Db.Documents.Where(d=>(d.SourceId==id||Db.SourceLinks.Any(l=>l.EntityType=="Source"&&l.EntityId==id&&l.SourceId==d.SourceId))&&d.ArchivedAtUtc==null).ToListAsync();await History(id);return View(source);}
     public IActionResult Create()=>View(new SourceRecord());
     [HttpPost]public async Task<IActionResult> Create([Bind("Kind,Title,OriginalText,OccurredAtUtc,Sender,IsConfidential")]SourceRecord input)
     {
-        if(ModelState.IsValid)try{var source=service.Capture(input.Kind,input.Title,input.OriginalText,input.OccurredAtUtc,input.Sender,input.IsConfidential);await Db.SaveChangesAsync();return RedirectToAction("Details",new{id=source.Id});}catch(ValidationException ex){ModelState.AddModelError("",ex.Message);}
+        if(ModelState.IsValid)try{var source=service.Capture(input.Kind,input.Title,input.OriginalText,input.OccurredAtUtc,input.Sender,input.IsConfidential);if(!await Save())return View(input);return RedirectToAction("Details",new{id=source.Id});}catch(ValidationException ex){ModelState.AddModelError("",ex.Message);}
         return View(input);
     }
     [HttpPost]public async Task<IActionResult> UpdateMetadata(Guid id,int version,string status,bool isConfidential)
@@ -56,4 +56,3 @@ public class DependenciesController(WorkDb db,TrackingService service):Managemen
     [HttpPost]public async Task<IActionResult> Add(Guid taskId,Guid dependsOn){try{await service.AddDependency(taskId,dependsOn);await Db.SaveChangesAsync();}catch(ValidationException ex){TempData["Message"]=ex.Message;}return RedirectToAction("Index",new{taskId});}
     [HttpPost]public async Task<IActionResult> Remove(Guid id){var item=await Db.TaskDependencies.FindAsync(id);if(item==null)return NotFound();item.ArchivedAtUtc=DateTime.UtcNow;await Db.SaveChangesAsync();return RedirectToAction("Index",new{item.TaskId});}
 }
-

@@ -13,12 +13,14 @@ public class AttachmentService(WorkDb db,string directory)
     public static CheckedAttachment Check(string fileName,byte[] bytes)
     {
         var name=Path.GetFileName(fileName);var ext=Path.GetExtension(name).ToLowerInvariant();if(name.Length>200||name!=fileName||name.Contains('\\')||name.Contains('/')||name.Contains(':')||name.Contains('\0')||bytes.Length==0||bytes.Length>5*1024*1024)throw new ValidationException("Tên/đường dẫn hoặc kích thước tệp không hợp lệ (tối đa 5 MB).");
-        var mime=ext switch{".txt"=>"text/plain",".pdf"=>"application/pdf",".docx"=>"application/vnd.openxmlformats-officedocument.wordprocessingml.document",".xlsx"=>"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",".png"=>"image/png",".jpg" or ".jpeg"=>"image/jpeg",_=>throw new ValidationException("Định dạng không được phép.")};
+        var mime=ext switch{".txt"=>"text/plain",".pdf"=>"application/pdf",".docx"=>"application/vnd.openxmlformats-officedocument.wordprocessingml.document",".xlsx"=>"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",".webp"=>"image/webp",".gif"=>"image/gif",".png"=>"image/png",".jpg" or ".jpeg"=>"image/jpeg",_=>throw new ValidationException("Định dạng không được phép.")};
         string? text=null;
         if(ext==".txt"){try{text=new UTF8Encoding(false,true).GetString(bytes);if(text.Contains('\0'))throw new ValidationException("Tệp text chứa dữ liệu nhị phân.");if(text.Length>60000)text=null;}catch(DecoderFallbackException){throw new ValidationException("Tệp text cần mã hóa UTF-8.");}}
         else if(ext==".pdf"&&!bytes.AsSpan().StartsWith("%PDF-"u8))throw new ValidationException("Chữ ký PDF không hợp lệ.");
         else if(ext==".png"&&!bytes.AsSpan().StartsWith(new byte[]{137,80,78,71,13,10,26,10}))throw new ValidationException("Chữ ký PNG không hợp lệ.");
         else if((ext==".jpg"||ext==".jpeg")&&!bytes.AsSpan().StartsWith(new byte[]{255,216,255}))throw new ValidationException("Chữ ký JPEG không hợp lệ.");
+        else if(ext==".webp"&&!(bytes.Length>12&&bytes.AsSpan(0,4).SequenceEqual("RIFF"u8)&&bytes.AsSpan(8,4).SequenceEqual("WEBP"u8)))throw new ValidationException("Chữ ký WebP không hợp lệ.");
+        else if(ext==".gif"&&!(bytes.AsSpan().StartsWith("GIF87a"u8)||bytes.AsSpan().StartsWith("GIF89a"u8)))throw new ValidationException("Chữ ký GIF không hợp lệ.");
         else if(ext is ".docx" or ".xlsx")
         {
             try{using var stream=new MemoryStream(bytes);using var zip=new ZipArchive(stream);if(zip.Entries.Count>1000||zip.Entries.Sum(e=>e.Length)>20*1024*1024||zip.GetEntry("[Content_Types].xml")==null||zip.Entries.Any(e=>e.FullName.Contains("vbaProject",StringComparison.OrdinalIgnoreCase))||!zip.Entries.Any(e=>e.FullName.StartsWith(ext==".docx"?"word/":"xl/",StringComparison.Ordinal)))throw new ValidationException("Tệp Office không hợp lệ hoặc chứa macro/quá lớn.");}catch(InvalidDataException){throw new ValidationException("Tệp Office không đúng ZIP signature.");}
@@ -27,8 +29,10 @@ public class AttachmentService(WorkDb db,string directory)
     }
     public async Task<DocumentRecord> Store(Guid sourceId,CheckedAttachment file)
     {
+        var duplicate=db.Documents.Local.FirstOrDefault(d=>d.SourceId==sourceId&&d.Sha256==file.Hash)??await db.Documents.FirstOrDefaultAsync(d=>d.SourceId==sourceId&&d.Sha256==file.Hash);if(duplicate!=null)return duplicate;
+        var extracted=DocumentExtraction.Read(file);
         Directory.CreateDirectory(directory);var stored=Guid.NewGuid().ToString("N")+file.Extension;await File.WriteAllBytesAsync(Path.Combine(directory,stored),file.Bytes);
-        var doc=new DocumentRecord{SourceId=sourceId,OriginalFileName=file.Name,StoredName=stored,ContentType=file.Mime,LengthBytes=file.Bytes.Length,Sha256=file.Hash,ExtractedText=file.Text,ExtractionStatus=file.Text!=null?"UTF-8 text extracted locally":"Unsupported — file stored safely, not read"};db.Documents.Add(doc);return doc;
+        var doc=new DocumentRecord{SourceId=sourceId,OriginalFileName=file.Name,StoredName=stored,ContentType=file.Mime,LengthBytes=file.Bytes.Length,Sha256=file.Hash,ExtractedText=extracted.Text,ExtractionStatus=extracted.Status};db.Documents.Add(doc);return doc;
     }
     public string PathFor(DocumentRecord doc)
     {

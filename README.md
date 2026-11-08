@@ -77,3 +77,6 @@ File Excel được cung cấp cục bộ không đưa vào Git mặc định đ
 ### Cấu hình tự động trên máy hiện tại
 Khóa có thể được cấp sẵn trong kho DPAPI cục bộ Data/Secrets và model/quyền AI trong SQLite, không cần nhập lại ở mỗi lần chạy. Secret không có trong GitHub; clone trên máy khác mặc định vẫn cần cấu hình riêng. Công cụ maintenance hỗ trợ ai-status (chỉ hiển thị trạng thái), configure-ai (nhận JSON qua stdin, không truyền key qua command argument), verify-ai (chỉ gửi câu kiểm tra tổng hợp không có dữ liệu công việc). Không log key.
 
+
+## V1.1 upgrade
+See [V11_GUIDE.md](V11_GUIDE.md) for source-preserving startup, upload/AI entry, streaming chat and themes. The new publish is publish/AIWorkAssistant-1.1. Licensed DevExtreme runtime verification remains blocked without supplied licensed assets; see DEVEXTREME_SETUP.md.

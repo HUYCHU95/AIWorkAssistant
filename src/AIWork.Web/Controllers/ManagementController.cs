@@ -7,18 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace AIWork.Web.Controllers;
 
 [Authorize]
-public class HomeController(WorkDb db) : Controller
+public class HomeController : Controller
 {
-    public async Task<IActionResult> Index()
-    {
-        ViewBag.Projects = await db.Projects.CountAsync(p => p.ArchivedAtUtc == null);
-        ViewBag.InboxCount=await db.InboxItems.CountAsync(i=>i.ArchivedAtUtc==null&&i.Status=="NeedsReview");
-        ViewBag.PendingActions=await db.Actions.CountAsync(a=>a.Status=="PendingApproval"||a.Status=="NeedsReview");
-        ViewBag.OpenIssues=await db.TrackingEntries.CountAsync(e=>e.ArchivedAtUtc==null&&e.Kind==TrackingKind.Issue&&e.Status!=TrackingStatus.Verified&&e.Status!=TrackingStatus.Cancelled);
-        ViewBag.Decisions=await db.TrackingEntries.CountAsync(e=>e.ArchivedAtUtc==null&&e.Kind==TrackingKind.Decision&&e.Status==TrackingStatus.Open);
-        ViewBag.History = await db.AuditEvents.OrderByDescending(a => a.OccurredAtUtc).Take(8).ToListAsync();
-        return View(await db.Tasks.Where(t => t.ArchivedAtUtc == null).ToListAsync());
-    }
+    public IActionResult Index() => View();
     [AllowAnonymous] public IActionResult Error() { Response.StatusCode = 500; return View("ErrorPage", "Có lỗi khi xử lý. Dữ liệu không bị xóa. Hãy tải lại trang và kiểm tra lịch sử trước khi thử lại."); }
     [AllowAnonymous] public IActionResult Status(int code) { Response.StatusCode = code; return View("ErrorPage", $"Mã {code}: không tìm thấy trang hoặc yêu cầu không hợp lệ."); }
 }
@@ -31,10 +22,14 @@ public abstract class ManagementController(WorkDb db) : Controller
         ViewBag.Projects = await db.Projects.OrderBy(p => p.Name).ToListAsync();
         ViewBag.Workstreams = await db.Workstreams.OrderBy(w => w.Name).ToListAsync();
     }
-    protected async Task History(Guid id) => ViewBag.History = await db.AuditEvents.Where(a => a.EntityId == id.ToString()).OrderByDescending(a => a.OccurredAtUtc).ToListAsync();
+    protected async Task History(Guid id)
+    {
+        ViewBag.History=await db.AuditEvents.Where(a=>a.EntityId==id.ToString()).OrderByDescending(a=>a.OccurredAtUtc).ToListAsync();
+        ViewBag.LinkedSources=await db.Sources.Where(s=>db.SourceLinks.Any(l=>l.EntityId==id&&l.SourceId==s.Id&&l.ArchivedAtUtc==null)).ToListAsync();
+    }
     protected async Task<bool> Save()
     {
-        try { await db.SaveChangesAsync(); return true; }
+        try { if(Request.HasFormContentType && Guid.TryParse(Request.Form["analysisSourceId"],out var sourceId)){if(!await db.Sources.AnyAsync(s=>s.Id==sourceId)){ModelState.AddModelError("", "Nguồn phân tích không tồn tại.");return false;}foreach(var e in db.ChangeTracker.Entries<Record>().Where(e=>e.State is EntityState.Added or EntityState.Modified).ToList()){var type=e.Entity switch{Project=>"Project",WorkTask=>"Task",Workstream=>"Workstream",TrackingEntry=>"TrackingEntry",SourceRecord=>"Source",_=>null};if(type!=null&&e.Entity.Id!=sourceId&&!await db.SourceLinks.AnyAsync(l=>l.SourceId==sourceId&&l.EntityType==type&&l.EntityId==e.Entity.Id))db.SourceLinks.Add(new SourceLink{SourceId=sourceId,EntityType=type,EntityId=e.Entity.Id});}}await db.SaveChangesAsync(); return true; }
         catch (DbUpdateConcurrencyException) { ModelState.AddModelError("", "Bản ghi đã thay đổi ở cửa sổ khác. Tải lại trang để xem phiên bản mới trước khi sửa."); }
         catch (DbUpdateException) { ModelState.AddModelError("", "Không thể lưu: mã bị trùng hoặc liên kết dữ liệu không hợp lệ."); }
         return false;
@@ -148,6 +143,3 @@ public class TasksController(WorkDb db) : ManagementController(db)
         if (!await Save()) return Conflict("Dữ liệu đã thay đổi. Hãy tải lại trang."); return RedirectToAction("Index");
     }
 }
-
-
-

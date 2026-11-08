@@ -20,20 +20,21 @@ public class InboxController(WorkDb db,InboxService inbox,AttachmentService atta
 {
     public async Task<IActionResult> Index(string? q,string? status){ViewBag.Sources=await Db.Sources.OrderByDescending(s=>s.CreatedAtUtc).ToListAsync();return View(await Db.InboxItems.Where(i=>i.ArchivedAtUtc==null&&(status==null||i.Status==status)&&(q==null||Db.Sources.Any(s=>s.Id==i.SourceId&&(s.Title.Contains(q)||s.OriginalText.Contains(q))))).OrderByDescending(i=>i.CreatedAtUtc).Take(100).ToListAsync());}
     public async Task<IActionResult> Capture(){await Lists();return View(new CaptureInput());}
-    [HttpPost,RequestSizeLimit(16*1024*1024)]public async Task<IActionResult> Capture(CaptureInput input)
+    [HttpPost,RequestSizeLimit(30*1024*1024)]public async Task<IActionResult> Capture(CaptureInput input)
     {
-        if(input.Files.Count>3)ModelState.AddModelError("Files","Tối đa 3 tệp mỗi lần.");
+        if(input.Files.Count>8||input.Files.Sum(f=>f.Length)>25*1024*1024)ModelState.AddModelError("Files","Tối đa 8 file, tổng 25 MB.");
         if(ModelState.IsValid)try
         {
             var old=await Db.InboxItems.SingleOrDefaultAsync(i=>i.CaptureKey==input.CaptureKey);if(old!=null)return RedirectToAction("Details",new{id=old.Id});
             var files=new List<CheckedAttachment>();foreach(var file in input.Files){if(file.Length>5*1024*1024)throw new ValidationException("Mỗi tệp tối đa 5 MB.");using var bytes=new MemoryStream();await file.CopyToAsync(bytes);files.Add(AttachmentService.Check(file.FileName,bytes.ToArray()));}
             await using var tx=await Db.Database.BeginTransactionAsync();var item=await inbox.Capture(input.Kind,input.Title,input.Body,input.OccurredAtUtc,input.Sender,input.IsConfidential,input.ProjectId,input.CaptureKey);
+            if(Guid.TryParse(Request.Form["analysisSourceId"],out var analysisSource)){await new TrackingService(Db).Link(analysisSource,"Source",item.SourceId);}
             var saved=new List<DocumentRecord>();try{foreach(var f in files)saved.Add(await attachments.Store(item.SourceId,f));await Db.SaveChangesAsync();await tx.CommitAsync();}catch{foreach(var d in saved)if(System.IO.File.Exists(attachments.PathFor(d)))System.IO.File.Delete(attachments.PathFor(d));throw;}
             return RedirectToAction("Details",new{id=item.Id});
         }catch(ValidationException ex){ModelState.AddModelError("",ex.Message);}
         await Lists();return View(input);
     }
-    public async Task<IActionResult> Details(Guid id){var item=await Db.InboxItems.FindAsync(id);if(item==null)return NotFound();ViewBag.Source=await Db.Sources.FindAsync(item.SourceId);ViewBag.Documents=await Db.Documents.Where(d=>d.SourceId==item.SourceId).ToListAsync();ViewBag.Actions=await Db.Actions.Where(a=>a.OriginSourceId==item.SourceId).ToListAsync();return View(item);}
+    public async Task<IActionResult> Details(Guid id){var item=await Db.InboxItems.FindAsync(id);if(item==null)return NotFound();ViewBag.Source=await Db.Sources.FindAsync(item.SourceId);ViewBag.Documents=await Db.Documents.Where(d=>d.SourceId==item.SourceId||Db.SourceLinks.Any(l=>l.EntityType=="Source"&&l.EntityId==item.SourceId&&l.SourceId==d.SourceId)).ToListAsync();ViewBag.Actions=await Db.Actions.Where(a=>a.OriginSourceId==item.SourceId).ToListAsync();return View(item);}
     [HttpPost]public async Task<IActionResult> Extract(Guid id){try{var n=await inbox.ExtractChecklist(id);TempData["Message"]=$"Đã tạo {n} đề xuất rà soát theo checklist. Không tạo công việc trước xác nhận.";}catch(ValidationException ex){TempData["Message"]=ex.Message;}return RedirectToAction("Details",new{id});}
     [HttpPost]public async Task<IActionResult> Complete(Guid id,int version){var item=await Db.InboxItems.FindAsync(id);if(item==null)return NotFound();CheckVersion(item,version);if(await Db.Actions.AnyAsync(a=>a.OriginSourceId==item.SourceId&&(a.Status=="PendingApproval"||a.Status=="NeedsReview"))){TempData["Message"]="Vẫn còn đề xuất chờ rà soát.";return RedirectToAction("Details",new{id});}item.Status="Processed";item.ReviewedAtUtc=DateTime.UtcNow;if(!await Save())return Conflict();return RedirectToAction("Details",new{id});}
 }

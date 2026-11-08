@@ -1,0 +1,4 @@
+@{ViewData["Title"]="Phân tích tài liệu & tự điền";}
+<div class="page-heading"><div><div class="eyebrow">AI WORKSPACE</div><h1>Biến tài liệu thành công việc</h1><p class="muted">Lưu nguồn gốc, xem lại thông tin trích xuất rồi duyệt từng hành động.</p></div></div>
+<section class="card"><label for="analysis-kind">Loại hồ sơ cần nhập</label><select id="analysis-kind">@foreach(var kind in AIWork.Infrastructure.AnalysisService.Kinds){<option>@kind</option>}</select></section>
+<partial name="_AIEntry" />

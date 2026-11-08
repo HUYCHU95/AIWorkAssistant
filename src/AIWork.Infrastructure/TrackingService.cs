@@ -22,7 +22,7 @@ public class TrackingService(WorkDb db)
     public async Task Link(Guid sourceId,string entityType,Guid entityId)
     {
         if(!await db.Sources.AnyAsync(s=>s.Id==sourceId))throw new ValidationException("Nguồn không tồn tại.");
-        var exists=entityType switch{"Project"=>await db.Projects.AnyAsync(p=>p.Id==entityId),"Task"=>await db.Tasks.AnyAsync(t=>t.Id==entityId),"TrackingEntry"=>await db.TrackingEntries.AnyAsync(t=>t.Id==entityId),_=>false};
+        var exists=entityType switch{"Workstream"=>await db.Workstreams.AnyAsync(w=>w.Id==entityId),"Source"=>await db.Sources.AnyAsync(s=>s.Id==entityId),"Project"=>await db.Projects.AnyAsync(p=>p.Id==entityId),"Task"=>await db.Tasks.AnyAsync(t=>t.Id==entityId),"TrackingEntry"=>await db.TrackingEntries.AnyAsync(t=>t.Id==entityId),_=>false};
         if(!exists)throw new ValidationException("Đích liên kết không hợp lệ.");
         if(!await db.SourceLinks.AnyAsync(l=>l.SourceId==sourceId&&l.EntityType==entityType&&l.EntityId==entityId))db.SourceLinks.Add(new SourceLink{SourceId=sourceId,EntityType=entityType,EntityId=entityId});
     }

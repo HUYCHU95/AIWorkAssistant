@@ -29,9 +29,19 @@ public class HttpTests
             var password = "Test-only-" + Guid.NewGuid().ToString("N");
             var response = await Post(client, "/Account/Setup", new() { { "UserName", "tester" }, { "Password", password } }); Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             foreach (var url in new[] { "/", "/Projects", "/Tasks", "/Workstreams", "/Import", "/Settings", "/Tracking", "/Sources", "/Dependencies", "/Tracking/Edit", "/Sources/Create", "/Chat", "/Integrations", "/Actions", "/Inbox", "/Inbox/Capture", "/Memory", "/Memory/Create", "/Planner", "/Maintenance" }) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK,(await client.GetAsync("/Analysis")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK,(await client.GetAsync("/Appearance")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsync("/Analysis/Stage",new FormUrlEncodedContent(new Dictionary<string,string>()))).StatusCode);
+            using var stage=new MultipartFormDataContent();stage.Add(new StringContent(await Token(client,"/Analysis")),"__RequestVerificationToken");var stageKey=Guid.NewGuid().ToString();stage.Add(new StringContent(stageKey),"requestKey");stage.Add(new StringContent("Task"),"targetKind");stage.Add(new StringContent("true"),"confidential");stage.Add(new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("Local synthetic evidence")),"files","evidence.txt");response=await client.PostAsync("/Analysis/Stage",stage);Assert.Equal(HttpStatusCode.OK,response.StatusCode);var staged=System.Text.Json.Nodes.JsonNode.Parse(await response.Content.ReadAsStringAsync())!;var draftId=staged["id"]!.GetValue<string>();var stagedSourceId=staged["sourceId"]!.GetValue<string>();
+            response=await Post(client,"/Analysis/Analyze",new(){{"id",draftId}},"/Analysis");Assert.Contains("Blocked",await response.Content.ReadAsStringAsync());
+            response=await Post(client,"/Analysis/Stage",new(){{"requestKey",stageKey},{"targetKind","Task"},{"text","retry"}},"/Analysis");Assert.Equal(draftId,System.Text.Json.Nodes.JsonNode.Parse(await response.Content.ReadAsStringAsync())!["id"]!.GetValue<string>());
+            Assert.Contains("evidence.txt",await client.GetStringAsync("/Sources/Details/"+stagedSourceId));
+            var exp=new AIWork.Domain.ExperienceSettings{Theme="Dark",PageAccentsJson="{\"Tasks\":\"#123456\"}"};var appearance=new Dictionary<string,string>{{"Theme","Dark"},{"SendKey","Enter"},{"HomeAccent",exp.HomeAccent},{"AIAccent",exp.AIAccent},{"WorkAccent",exp.WorkAccent},{"PlanningAccent",exp.PlanningAccent},{"SettingsAccent",exp.SettingsAccent},{"PageAccentsJson",exp.PageAccentsJson}};response=await Post(client,"/Appearance/Save",appearance,"/Appearance");Assert.Equal(HttpStatusCode.Redirect,response.StatusCode);Assert.Contains("data-theme=\"dark\"",await client.GetStringAsync("/"));Assert.Contains("#123456",await client.GetStringAsync("/Appearance/Styles"));
+            response=await Post(client,"/Chat/Create",new(){{"title","SSE HTTP"}},"/Chat");var conversationId=response.Headers.Location!.ToString().Split('/').Last();response=await Post(client,"/Chat/Stream",new(){{"id",conversationId},{"requestId",Guid.NewGuid().ToString()},{"text","Offline SSE"}},"/Chat/Details/"+conversationId);Assert.Equal("text/event-stream",response.Content.Headers.ContentType!.MediaType);var sse=await response.Content.ReadAsStringAsync();Assert.Contains("event: ack",sse);Assert.Contains("event: error",sse);Assert.Contains("Offline SSE",await client.GetStringAsync("/Chat/Messages/"+conversationId));
+            Assert.Contains("kpis",await client.GetStringAsync("/Dashboard/Data"));
             var ws = Guid.NewGuid(); response = await Post(client, "/Workstreams/Edit/" + ws, new() { { "Id", ws.ToString() }, { "Code", "WS-TEST" }, { "Name", "Test stream" }, { "Status", "0" }, { "Version", "0" } }); Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             var project = Guid.NewGuid(); response = await Post(client, "/Projects/Edit/" + project, new() { { "Id", project.ToString() }, { "Code", "P-TEST" }, { "Name", "Test project" }, { "WorkstreamId", ws.ToString() }, { "Version", "0" } }); Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-            var task = Guid.NewGuid(); var fields = new Dictionary<string, string> { { "Id", task.ToString() }, { "Title", "HTTP task" }, { "ProjectId", project.ToString() }, { "DueDate", "2026-11-01" }, { "DueDateType", "0" }, { "Status", "0" }, { "Priority", "2" }, { "Version", "0" } };
+            var task = Guid.NewGuid(); var fields = new Dictionary<string, string> { { "Id", task.ToString() }, { "Title", "HTTP task" }, {"analysisSourceId",stagedSourceId}, { "ProjectId", project.ToString() }, { "DueDate", "2026-11-01" }, { "DueDateType", "0" }, { "Status", "0" }, { "Priority", "2" }, { "Version", "0" } };
             response = await Post(client, "/Tasks/Edit/" + task, fields); Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             fields["Status"] = "3"; fields["Version"] = "1"; response = await Post(client, "/Tasks/Edit/" + task, fields); Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             fields["Title"] = "stale write"; response = await Post(client, "/Tasks/Edit/" + task, fields); Assert.Equal(HttpStatusCode.OK, response.StatusCode); Assert.Contains("validation-summary-errors", await response.Content.ReadAsStringAsync());
@@ -64,7 +74,7 @@ public class HttpTests
             Guid downloadId;Guid sourceId;
             using(var reviewScope=factory.Services.CreateScope())
             {
-                var reviewDb=reviewScope.ServiceProvider.GetRequiredService<WorkDb>();var inboxItem=await reviewDb.InboxItems.FindAsync(inboxId);sourceId=inboxItem!.SourceId;downloadId=(await reviewDb.Documents.SingleAsync()).Id;
+                var reviewDb=reviewScope.ServiceProvider.GetRequiredService<WorkDb>();var inboxItem=await reviewDb.InboxItems.FindAsync(inboxId);sourceId=inboxItem!.SourceId;downloadId=(await reviewDb.Documents.SingleAsync(d=>d.SourceId==sourceId)).Id;
                 foreach(var action in await reviewDb.Actions.Where(a=>a.OriginSourceId==sourceId).ToListAsync()){response=await Post(client,"/Actions/Approve/"+action.Id,new(){{"version",action.Version.ToString()}},"/Actions/Details/"+action.Id);Assert.Equal(HttpStatusCode.Redirect,response.StatusCode);}
             }
             using(var metadataScope=factory.Services.CreateScope())
@@ -86,7 +96,7 @@ public class HttpTests
             var expiryText=Regex.Match(rememberedCookie,@"expires=([^;]+)",RegexOptions.IgnoreCase).Groups[1].Value;var expiry=DateTimeOffset.Parse(expiryText,System.Globalization.CultureInfo.InvariantCulture);
             Assert.InRange(expiry-DateTimeOffset.UtcNow,TimeSpan.FromDays(29.9),TimeSpan.FromDays(30.1));
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Tasks/Details/" + task)).StatusCode);
-            using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<WorkDb>(); Assert.Equal(65, await db.Tasks.CountAsync()); Assert.True(await db.AuditEvents.AnyAsync(a => a.EntityId == task.ToString() && a.Action == "Update")); Assert.Equal("HTTP task", (await db.Tasks.FindAsync(task))!.Title);
+            using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<WorkDb>(); Assert.Equal(65, await db.Tasks.CountAsync()); Assert.True(await db.AuditEvents.AnyAsync(a => a.EntityId == task.ToString() && a.Action == "Update")); Assert.Equal("HTTP task", (await db.Tasks.FindAsync(task))!.Title);Assert.True(await db.SourceLinks.AnyAsync(l=>l.SourceId==Guid.Parse(stagedSourceId)&&l.EntityId==task));Assert.Contains("/Sources/Details/"+stagedSourceId,await client.GetStringAsync("/Tasks/Details/"+task));
             var replacementPassword="Test-only-new-"+Guid.NewGuid().ToString("N");
             response=await Post(client,"/Profile/ChangePassword",new(){{"CurrentPassword",password},{"NewPassword",replacementPassword},{"ConfirmPassword",replacementPassword}},"/Profile");Assert.Equal(HttpStatusCode.Redirect,response.StatusCode);
             Assert.Equal(HttpStatusCode.Redirect,(await client.GetAsync("/Tasks")).StatusCode);
@@ -106,14 +116,3 @@ public class HttpTests
         return await client.PostAsync(path, new FormUrlEncodedContent(data));
     }
 }
-
-
-
-
-
-
-
-
-
-
-

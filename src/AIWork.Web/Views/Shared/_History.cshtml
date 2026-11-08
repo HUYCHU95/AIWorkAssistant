@@ -1,2 +1,3 @@
 @model IEnumerable<AuditEvent>
+@if(ViewBag.LinkedSources is IEnumerable<SourceRecord> sources && sources.Any()){<section class="card"><h2>Nguồn gốc liên quan</h2>@foreach(var s in sources){<a class="list-link" href="/Sources/Details/@s.Id">@s.Title · @(s.IsConfidential?"Nội bộ":"Được phép xử lý AI")</a>}</section>}
 <section class="card"><h2>Lịch sử thay đổi</h2>@if(!Model.Any()){<p class="muted">Chưa có thay đổi.</p>}@foreach(var a in Model){<details class="audit"><summary>@WorkRules.LocalTime(a.OccurredAtUtc) · @a.Actor · @a.Action · @a.EntityType</summary><div class="grid"><div><b>Trước</b><pre>@(a.BeforeJson ?? "—")</pre></div><div><b>Sau</b><pre>@(a.AfterJson ?? "—")</pre></div></div></details>}</section>

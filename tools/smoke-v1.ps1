@@ -1,10 +1,10 @@
-param([switch]$KeepRunning)
+param([switch]$KeepRunning,[string]$PublishFolder="publish/AIWorkAssistant")
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Net.Http
 $repo=Split-Path -Parent $PSScriptRoot
 $fixture=Join-Path $repo ('artifacts/V1Smoke-'+(Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Force $fixture | Out-Null
-Get-ChildItem -LiteralPath (Join-Path $repo 'publish/AIWorkAssistant') | Where-Object {$_.Name -ne 'Data'} | Copy-Item -Destination $fixture -Recurse
+Get-ChildItem -LiteralPath (Join-Path $repo $PublishFolder) | Where-Object {$_.Name -ne 'Data'} | Copy-Item -Destination $fixture -Recurse
 $configPath=Join-Path $fixture 'appsettings.json';$config=Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json;$listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop();$config.LocalPort=$port;$config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $configPath
 $base="http://127.0.0.1:$port"
 $handler=[Net.Http.HttpClientHandler]::new();$handler.AllowAutoRedirect=$false;$handler.UseProxy=$false;$handler.CookieContainer=[Net.CookieContainer]::new();$client=[Net.Http.HttpClient]::new($handler);$client.Timeout=[TimeSpan]::FromSeconds(30)
@@ -44,6 +44,3 @@ try
     Write-Output "PASS: final EXE, auth, 13 screens, import 9/60, Inbox+attachment+3 reviewed tasks, honest offline chat, backup, queue stop, offline restore, old password preserved, 63 tasks restored. Fixture: $fixture"
 }
 finally{if(-not $KeepRunning -and $process -and -not $process.HasExited){$process.CloseMainWindow() | Out-Null;Start-Sleep -Milliseconds 200;if(-not $process.HasExited){Stop-Process -Id $process.Id}};$client.Dispose();$handler.Dispose()}
-
-
-

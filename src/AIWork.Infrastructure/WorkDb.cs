@@ -23,6 +23,7 @@ public partial class WorkDb(DbContextOptions<WorkDb> options) : DbContext(option
         ConfigureActions(m);
         ConfigureMemory(m);
         ConfigurePlanner(m);
+        ConfigureExperience(m);
         m.Entity<Workstream>().HasIndex(x => x.Code).IsUnique();
         m.Entity<Project>().HasIndex(x => x.Code).IsUnique();
         m.Entity<WorkTask>().HasIndex(x => x.ImportFingerprint).IsUnique();
@@ -76,4 +77,5 @@ public partial class WorkDb(DbContextOptions<WorkDb> options) : DbContext(option
     partial void ConfigureActions(ModelBuilder m);
     partial void ConfigureMemory(ModelBuilder m);
     partial void ConfigurePlanner(ModelBuilder m);
+    partial void ConfigureExperience(ModelBuilder m);
 }
