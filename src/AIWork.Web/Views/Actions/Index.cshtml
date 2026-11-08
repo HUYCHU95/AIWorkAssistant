@@ -1,0 +1,3 @@
+@model List<ActionReceipt>
+@{ViewData["Title"]="Đề xuất & kết quả hành động";}
+<h1>Đề xuất & kết quả hành động</h1><p class="notice">Model không có quyền tự phê duyệt. Chỉ nút xác nhận của người dùng mới thực hiện thay đổi. PendingApproval/NeedsReview chưa phải thành công.</p><section class="card">@foreach(var a in Model){<a class="list-link" href="/Actions/Details/@a.Id"><span>@a.ToolName<small>@a.Summary</small></span><span class="badge">@a.Status · @a.RiskLevel</span></a>}@if(Model.Count==0){<p class="empty">Chưa có hành động. Yêu cầu trong AI Workspace hoặc xem xét từ Inbox.</p>}</section>

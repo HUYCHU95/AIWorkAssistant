@@ -1,0 +1,7 @@
+@{ViewData["Title"]="Cài đặt & sao lưu";}
+<div class="page-heading"><div><div class="eyebrow">ỨNG DỤNG CỤC BỘ · V0.1</div><h1>Cài đặt & sao lưu</h1><a href="/Profile">Tài khoản & đổi mật khẩu</a> · <a href="/Integrations">Cấu hình AI, SMTP & quyền dữ liệu</a><p class="muted">Tài khoản đang dùng: @User.Identity?.Name</p></div></div>
+<section class="card"><h2>Bảo vệ dữ liệu</h2><a href="/Maintenance">Phục hồi đã kiểm chứng & chẩn đoán</a><p>Tạo snapshot nhất quán bằng SQLite Online Backup API. Tệp ZIP gồm database, tệp đính kèm và thông tin phiên bản; được lưu trong Data/Backups và tải về trình duyệt.</p><form asp-action="Backup" method="post"><button class="button">Tạo & tải bản sao lưu</button></form><p class="muted">Để phục hồi: đóng ứng dụng, giữ một bản Data hiện tại; giải nén Data/AIWork.db và Data/Attachments từ ZIP vào thư mục ứng dụng. Không chép đè database đang chạy. Đọc README trước khi phục hồi.</p></section>
+<section class="card"><h2>Chuyển sang máy khác</h2><p>Đóng ứng dụng bằng Ctrl+C, sau đó sao chép toàn bộ thư mục publish, gồm Data. Mật khẩu được hash độc lập với máy; khóa cookie nằm trong Data/Keys. Chỉ cấp quyền truy cập thư mục cho tài khoản Windows của bạn.</p><p>Ứng dụng chỉ nghe 127.0.0.1. LAN tắt trong V0.1. Đổi cổng qua LocalPort trong appsettings.json, rồi khởi động lại.</p></section><section class="card"><h2>OpenAI Responses — cấu hình tùy chọn</h2><p>Ứng dụng quản lý vẫn hoạt động ngoại tuyến. AI chỉ dùng khi có cấu hình và quyền dữ liệu; briefing hiện tại tổng hợp theo quy tắc từ SQLite.</p></section>
+
+
+

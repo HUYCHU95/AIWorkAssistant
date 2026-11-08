@@ -1,0 +1,4 @@
+@model AIWork.Web.Controllers.Credentials
+@{ViewData["Title"]="Đăng nhập";}
+<section class="auth card"><div class="eyebrow">KHÔNG GIAN LÀM VIỆC CÁ NHÂN</div><h1>Chào mừng trở lại</h1><p>Đăng nhập để tiếp tục quản lý công việc.</p><form asp-action="Login" method="post"><div asp-validation-summary="All" class="validation"></div><label asp-for="UserName">Tên đăng nhập</label><input asp-for="UserName" autocomplete="username" required/><label asp-for="Password">Mật khẩu</label><input asp-for="Password" autocomplete="current-password" required/><label class="remember-login"><input asp-for="RememberMe"/> Ghi nhớ đăng nhập trong 30 ngày (máy riêng)</label><button class="button">Đăng nhập</button></form></section>
+

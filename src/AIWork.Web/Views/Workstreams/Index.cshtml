@@ -1,0 +1,5 @@
+@model List<Workstream>
+@{ViewData["Title"]="Luồng công việc";}
+<div class="page-heading"><div><div class="eyebrow">TỔ CHỨC CÔNG VIỆC</div><h1>Luồng công việc</h1><p class="muted">Nhóm dự án và công việc độc lập theo lĩnh vực.</p></div><a class="button" href="/Workstreams/Edit">+ Tạo luồng</a></div>
+<form class="filters" method="get"><input name="q" value="@Context.Request.Query["q"]" placeholder="Tìm tên hoặc mã…"/><label><input type="checkbox" name="archived" value="true" checked="@(Context.Request.Query["archived"]=="true")"/> Gồm lưu trữ</label><button>Lọc</button><a href="/Workstreams">Đặt lại</a></form>
+<div class="card table-wrap"><table><thead><tr><th>Mã</th><th>Luồng công việc</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody>@foreach(var w in Model){<tr><td>@w.Code</td><td><a href="/Workstreams/Details/@w.Id">@w.Name</a><small>@w.Description</small></td><td><span class="badge">@WorkRules.Label(w.Status)</span></td><td>@WorkRules.LocalTime(w.UpdatedAtUtc)</td></tr>}</tbody></table>@if(Model.Count==0){<p class="empty">Chưa có luồng phù hợp. Tạo luồng đầu tiên hoặc nhập Excel.</p>}</div>

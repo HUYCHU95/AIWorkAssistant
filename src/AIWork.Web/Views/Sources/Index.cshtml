@@ -1,0 +1,3 @@
+@model List<SourceRecord>
+@{ViewData["Title"]="Nguồn & lịch sử";}
+<div class="page-heading"><h1>Nguồn & lịch sử</h1><a class="button" href="/Sources/Create">+ Ghi nhận nguồn</a></div><form method="get" class="filters"><input name="q" placeholder="Tìm trong tiêu đề và nội dung nguồn…"/><button>Tìm</button></form><section class="card">@if(Model.Count==0){<p class="empty">Chưa có nguồn phù hợp.</p>}@foreach(var s in Model){<a class="list-link" href="/Sources/Details/@s.Id"><span>@s.Title<small>@s.Kind · @s.Status · @(s.IsConfidential?"Nội bộ — không gửi AI":"Được phép chọn gửi AI")</small></span><span>@WorkRules.LocalTime(s.CreatedAtUtc)</span></a>}</section>

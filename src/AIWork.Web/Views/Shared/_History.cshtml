@@ -1,0 +1,2 @@
+@model IEnumerable<AuditEvent>
+<section class="card"><h2>Lịch sử thay đổi</h2>@if(!Model.Any()){<p class="muted">Chưa có thay đổi.</p>}@foreach(var a in Model){<details class="audit"><summary>@WorkRules.LocalTime(a.OccurredAtUtc) · @a.Actor · @a.Action · @a.EntityType</summary><div class="grid"><div><b>Trước</b><pre>@(a.BeforeJson ?? "—")</pre></div><div><b>Sau</b><pre>@(a.AfterJson ?? "—")</pre></div></div></details>}</section>

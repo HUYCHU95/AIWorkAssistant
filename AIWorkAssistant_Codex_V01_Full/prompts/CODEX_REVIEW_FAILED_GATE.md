@@ -1,0 +1,3 @@
+# Optional prompt if Codex pauses after a failed gate
+
+Continue from the LAST PASSING checkpoint. Read TEST_REPORT_V1.md and IMPLEMENTATION_REPORT_V1.md. Diagnose the failing gate and implement the smallest safe fix. Do not discard the existing database, delete migrations, weaken authorization, or invent a PASS. Re-run related tests plus regression suite, update evidence, then continue remaining gates automatically as environment permits. If genuinely blocked by unavailable external credentials/services, mark that external verification UNVERIFIED and continue all independent implementation; provide exact manual steps for eventual validation.

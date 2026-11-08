@@ -1,0 +1,26 @@
+**/bin/
+**/obj/
+**/Data/
+publish/
+artifacts/
+.vs/
+TestResults/
+
+# Local credentials and databases
+.env
+.env.*
+!.env.example
+*.dpapi
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.pfx
+*.p12
+*.key
+*.user
+*.suo
+# Local provided workbook is excluded from code-only uploads
+sample-data/*.xlsx
+
