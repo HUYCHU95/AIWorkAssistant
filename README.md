@@ -73,3 +73,7 @@ Trang đăng nhập có lựa chọn Ghi nhớ đăng nhập trong 30 ngày, m�
 ### Workbook mẫu trong bản source
 File Excel được cung cấp cục bộ không đưa vào Git mặc định để tránh tải dữ liệu công ty lên GitHub. Đặt lại workbook của bạn tại sample-data/9_projects_nov_2026.xlsx để chạy nhóm kiểm thử importer; không thay bằng dữ liệu giả.
 
+
+### Cấu hình tự động trên máy hiện tại
+Khóa có thể được cấp sẵn trong kho DPAPI cục bộ Data/Secrets và model/quyền AI trong SQLite, không cần nhập lại ở mỗi lần chạy. Secret không có trong GitHub; clone trên máy khác mặc định vẫn cần cấu hình riêng. Công cụ maintenance hỗ trợ ai-status (chỉ hiển thị trạng thái), configure-ai (nhận JSON qua stdin, không truyền key qua command argument), verify-ai (chỉ gửi câu kiểm tra tổng hợp không có dữ liệu công việc). Không log key.
+

@@ -73,3 +73,7 @@ Final integrity: Original InitialV01 migration SHA256 equals V0.1 checkpoint (Tr
 ## 09/11/2026 — Remembered-login patch
 Authenticated HTTP regression verified: RememberMe=true issues HttpOnly/SameSite Strict auth cookie expiring approximately 30 days later; normal login omits cookie expiry; password-change/session revocation tests still pass. Full Release build: 0 warnings/errors; full tests: 22/22 passed. Original publish folder was locked by a running application (MSB3027), so a separate self-contained package was successfully produced at publish/AIWorkAssistant-1.0.1. Existing Data and active process were preserved. No schema migration needed for this patch.
 
+
+## 09/11/2026 — Explicit local OpenAI setup
+At the user's explicit request, an API key was saved only to the local Windows DPAPI store, with AI enabled and external-processing setting enabled. No key was written to source or Git. Maintenance tool build: 0 errors/warnings. Production Responses provider LIVE BASIC VERIFIED with model gpt-5.4-mini: synthetic prompt only, response exactly OK, 19 input / 5 output tokens. This supersedes earlier UNVERIFIED status for a basic OpenAI connection only; business-context/tool-action scenarios remain locally/mock tested and SMTP live remains UNVERIFIED. No company records were transmitted during the live test.
+
