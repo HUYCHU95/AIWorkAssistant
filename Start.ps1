@@ -7,14 +7,16 @@ $config=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'appsettings.json') -R
 if($config.LocalPort){$port=[int]$config.LocalPort}
 if($port -lt 1024 -or $port -gt 65535){throw 'Invalid LocalPort: use 1024..65535.'}
 $url="http://127.0.0.1:$port/"
-try {
- $running=Invoke-WebRequest ($url+'Account/Login') -UseBasicParsing -TimeoutSec 2
- if($running.StatusCode -eq 200 -and $running.Content -match 'AIWork'){
+$running=$null
+try {$running=Invoke-WebRequest ($url+'Account/Login') -UseBasicParsing -TimeoutSec 2} catch {}
+if($running -and $running.StatusCode -eq 200 -and $running.Content -match 'AIWork'){
+  $version=$null
+  try{$version=(Invoke-RestMethod ($url+'System/Version') -TimeoutSec 2).version}catch{}
+  if($version -ne '1.1.1'){throw 'Website dang chay BAN CU. Dong cua so AIWork bang Ctrl+C va chay Start.bat o thu muc source de cai ban moi. Khong mo lai ban cu.'}
   Write-Output ('AIWork is already running. Opening '+$url)
   Start-Process $url
   return
- }
-} catch {}
+}
 if(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue){throw "Port $port is occupied by another service. Change LocalPort in appsettings.json."}
 # Browser helper stays hidden; web app keeps this console for graceful Ctrl+C.
 $helper=Start-Job -ArgumentList $port -ScriptBlock {

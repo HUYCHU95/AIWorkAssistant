@@ -1,5 +1,5 @@
 @model Workstream
 @{ViewData["Title"]="Chỉnh sửa luồng công việc";}
 <div class="page-heading"><h1>Thông tin luồng công việc</h1><a href="/Workstreams">← Danh sách</a></div>
+<partial name="_AIEntry"/>
 <form class="card editor" asp-action="Edit" asp-route-id="@Model.Id" method="post"><input type="hidden" asp-for="Id"/><input type="hidden" asp-for="Version"/><div asp-validation-summary="All" class="validation"></div><div class="grid"><div><label asp-for="Code">Mã *</label><input asp-for="Code" required maxlength="40"/></div><div><label asp-for="Name">Tên luồng *</label><input asp-for="Name" required maxlength="200"/></div><div><label asp-for="ParentId">Luồng cha (tùy chọn)</label><select asp-for="ParentId"><option value="">Không có</option>@foreach(Workstream w in ViewBag.Workstreams){if(w.Id!=Model.Id){<option value="@w.Id">@w.Name @(w.ArchivedAtUtc != null ? "· Đã lưu trữ" : "")</option>}}</select></div><div><label asp-for="Status">Trạng thái</label><select asp-for="Status" asp-items="Ui.Options<WorkstreamStatus>()"></select></div></div><label asp-for="Description">Mô tả</label><textarea asp-for="Description" rows="4"></textarea><button class="button">Lưu thông tin</button></form>
-

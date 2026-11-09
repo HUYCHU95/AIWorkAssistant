@@ -15,6 +15,7 @@ public class ControlledTools(ReadTools reads,ActionService actions):IChatTools
             {
                 var allowed=name switch
                 {
+                    "create_project" or "create_workstream"=>new[]{"code","title","body","workstreamId","ownerText","sourceId","idempotencyKey"},
                     "capture_note"=>new[]{"title","body","projectId","workstreamId","sourceId","atUtc","idempotencyKey"},
                     "create_task"=>["title","body","projectId","workstreamId","ownerText","dueDate","dueDateType","priority","sourceId","idempotencyKey"],
                     "update_task"=>["entityId","expectedVersion","title","body","status","ownerText","dueDate","dueDateType","clearDueDate","priority","nextAction","sourceId","projectId","taskId","idempotencyKey"],
@@ -39,4 +40,3 @@ public class ControlledTools(ReadTools reads,ActionService actions):IChatTools
         catch(Exception ex)when(ex is ValidationException or JsonException or FormatException){return JsonSerializer.Serialize(new{status="Rejected",summary="Đối số không hợp lệ hoặc tool không được phép. Không có thay đổi nghiệp vụ."});}
     }
 }
-

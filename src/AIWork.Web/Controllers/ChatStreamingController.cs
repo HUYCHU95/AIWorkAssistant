@@ -7,6 +7,7 @@ namespace AIWork.Web.Controllers;
 public partial class ChatController
 {
     private static readonly ConcurrentDictionary<Guid,(Guid Conversation,CancellationTokenSource Token)> Active=new();
+    public async Task<IActionResult> Receipts(Guid id)=>Json(await Db.Actions.AsNoTracking().Where(a=>a.ConversationId==id).OrderBy(a=>a.CreatedAtUtc).Select(a=>new{a.Id,a.ToolName,a.Status,a.Summary,a.EntityType,a.EntityId,a.OriginSourceId,a.Version}).ToListAsync());
     public async Task<IActionResult> Messages(Guid id)=>Json(await Db.Messages.AsNoTracking().Where(m=>m.ConversationId==id).OrderBy(m=>m.CreatedAtUtc).Select(m=>new{m.Id,m.Role,m.Content,m.IsError,m.Model,m.CreatedAtUtc,m.CorrelationId,sourceId=Db.ChatTurns.Where(t=>t.UserMessageId==m.Id).Select(t=>t.SourceId).FirstOrDefault()}).ToListAsync());
     [HttpPost]public IActionResult Stop(Guid id,Guid requestId){if(Active.TryGetValue(requestId,out var running)&&running.Conversation==id){running.Token.Cancel();return Json(new{status="CancellationRequested"});}return Json(new{status="NotRunning"});}
     [HttpPost]public async Task Stream(Guid id,Guid requestId,string text,Guid? sourceId,CancellationToken cancellationToken)

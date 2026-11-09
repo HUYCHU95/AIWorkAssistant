@@ -1,4 +1,4 @@
-param([switch]$ForceRestore,[string]$OutputFolder="publish/AIWorkAssistant")
+param([switch]$ForceRestore,[string]$OutputFolder="publish/AIWorkAssistant-1.1")
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 function Run-Dotnet([string[]]$CommandArgs){ & dotnet @CommandArgs; if($LASTEXITCODE -ne 0){throw ('dotnet '+($CommandArgs -join ' ')+' failed with exit '+$LASTEXITCODE)} }
@@ -16,6 +16,6 @@ $output=Join-Path $PSScriptRoot $OutputFolder;New-Item -ItemType Directory -Forc
 $config=Join-Path $output 'appsettings.json';$previousConfig=$null
 if(Test-Path -LiteralPath $config){$previousConfig=[IO.File]::ReadAllBytes($config)}
 try{Run-Dotnet @('publish','src/AIWork.Web/AIWork.Web.csproj','-c','Release','-r','win-x64','--self-contained','true','--no-restore','-o',$output)}finally{if($null -ne $previousConfig){[IO.File]::WriteAllBytes($config,$previousConfig)}}
-foreach($name in @('Start.bat','Start.ps1','README.md','IMPLEMENTATION_REPORT_V1.md','TEST_REPORT_V1.md','V1_RELEASE_NOTES.md','IMPLEMENTATION_REPORT_V11.md','DEVEXTREME_SETUP.md','V11_GUIDE.md')){if(Test-Path -LiteralPath $name){Copy-Item -LiteralPath $name -Destination (Join-Path $output $name) -Force}}
+foreach($name in @('Start.bat','Start.ps1','README.md','IMPLEMENTATION_REPORT_V1.md','TEST_REPORT_V1.md','V1_RELEASE_NOTES.md','IMPLEMENTATION_REPORT_V11.md','IMPLEMENTATION_REPORT_V111.md','DEVEXTREME_SETUP.md','V11_GUIDE.md','release.json')){if(Test-Path -LiteralPath $name){Copy-Item -LiteralPath $name -Destination (Join-Path $output $name) -Force}}
 $sample=Join-Path $output 'sample-data';New-Item -ItemType Directory -Force $sample | Out-Null;Copy-Item -LiteralPath 'sample-data/9_projects_nov_2026.xlsx' -Destination $sample -Force
 Write-Output ('Ready: '+(Join-Path $output 'Start.bat')+'. Existing Data and appsettings preserved.')

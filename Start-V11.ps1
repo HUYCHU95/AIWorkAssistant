@@ -1,29 +1,31 @@
 param([switch]$PrepareOnly)
 $ErrorActionPreference='Stop'
 $repo=$PSScriptRoot
-$old=Join-Path $repo 'publish/AIWorkAssistant'
-$next=Join-Path $repo 'publish/AIWorkAssistant-1.1'
-if(-not(Test-Path -LiteralPath (Join-Path $next 'AIWork.Web.exe'))){throw 'Publish V1.1 not found. Run publish-win-x64.ps1 -OutputFolder publish/AIWorkAssistant-1.1 first.'}
-$oldData=Join-Path $old 'Data';$nextData=Join-Path $next 'Data'
-$oldLock=$null
-if((Test-Path -LiteralPath $nextData) -and -not(Test-Path -LiteralPath (Join-Path $nextData "AIWork.db"))){throw 'Target Data exists without database; inspect before transfer.'}
-try {
- if(Test-Path -LiteralPath $oldData){
-  try{$oldLock=[IO.File]::Open((Join-Path $oldData 'instance.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{
-   if($PrepareOnly){throw 'Old AIWork is running. Close its console with Ctrl+C before upgrading.'}
-   Write-Output 'Ban cu dang chay: mo lai website hien tai. De nang cap V1.1, dong cua so AIWork cu bang Ctrl+C roi chay lai Start.bat. Du lieu chua bi sao chep/thay doi.'
-   & (Join-Path $old 'Start.ps1')
-   return
-  }
-  if(-not(Test-Path -LiteralPath $nextData)){
-   if(Test-Path -LiteralPath ($nextData+".staging")){throw 'Previous transfer incomplete; inspect Data.staging before retrying.'};$destination=$nextData+".staging";New-Item -ItemType Directory -Path $destination | Out-Null
-   Get-ChildItem -LiteralPath $oldData -Force | Where-Object {$_.Name -notin @('instance.lock','AIWork.db-wal','AIWork.db-shm')} | Copy-Item -Destination $destination -Recurse
-   # The application lock ensures the old process is stopped; preserve any uncheckpointed WAL too.
-   foreach($name in @('AIWork.db-wal','AIWork.db-shm')){if(Test-Path -LiteralPath (Join-Path $oldData $name)){Copy-Item -LiteralPath (Join-Path $oldData $name) -Destination $destination}}
-   if(Test-Path -LiteralPath (Join-Path $old 'appsettings.json')){Copy-Item -LiteralPath (Join-Path $old 'appsettings.json') -Destination $next -Force}
-   if(-not([IO.Path]::GetFullPath($destination).StartsWith([IO.Path]::GetFullPath($next)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase))){throw 'Transfer target outside publish root.'}
-   Move-Item -LiteralPath $destination -Destination $nextData;Write-Output 'Copied existing Data and configuration. Original folder preserved. Startup will back up before migration.'
-  }
- }
-} finally {if($oldLock){$oldLock.Dispose()}}
-if(-not $PrepareOnly){& (Join-Path $next 'Start.ps1')}
+$source=Join-Path $repo 'publish/AIWorkAssistant-1.1'
+$target=Join-Path $repo 'publish/AIWorkAssistant'
+$manifest=Join-Path $source 'release.json'
+if(-not(Test-Path -LiteralPath $manifest)){throw 'V1.1 release missing. Run publish-win-x64.ps1 -OutputFolder publish/AIWorkAssistant-1.1.'}
+$release=Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+New-Item -ItemType Directory -Force $target | Out-Null
+$current=Join-Path $target 'release.json'
+$upToDate=(Test-Path -LiteralPath $current) -and ((Get-Content -LiteralPath $current -Raw|ConvertFrom-Json).version -eq $release.version) -and ((Get-FileHash -LiteralPath (Join-Path $source 'AIWork.Web.dll')).Hash -eq (Get-FileHash -LiteralPath (Join-Path $target 'AIWork.Web.dll')).Hash)
+foreach($asset in @('AIWork.Infrastructure.dll','wwwroot/js/site.js','wwwroot/js/dashboard.js','wwwroot/js/ai-entry.js','wwwroot/js/chat.js','wwwroot/js/markdown.js','wwwroot/css/site.css')){
+ if(-not(Test-Path -LiteralPath (Join-Path $target $asset)) -or ((Get-FileHash -LiteralPath (Join-Path $source $asset)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $target $asset)).Hash)){$upToDate=$false}
+}
+if(-not $upToDate){
+ $data=Join-Path $target 'Data';New-Item -ItemType Directory -Force $data | Out-Null
+ $lock=$null
+ try {
+  try{$lock=[IO.File]::Open((Join-Path $data 'instance.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{throw 'Ban cu van dang chay. Dong dung cua so AIWork bang Ctrl+C va chay lai Start.bat de CAP NHAT. Khong mo ban cu thay cho ban moi.'}
+  $backup=Join-Path $data ('Backups/pre-deploy-'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'));New-Item -ItemType Directory -Force $backup | Out-Null
+  foreach($name in @('AIWork.db','AIWork.db-wal','AIWork.db-shm')){if(Test-Path -LiteralPath (Join-Path $data $name)){Copy-Item -LiteralPath (Join-Path $data $name) -Destination $backup}}
+  $code=Join-Path $backup 'previous-code';New-Item -ItemType Directory -Force $code | Out-Null
+  Get-ChildItem -LiteralPath $target -Force | Where-Object {$_.Name -notin @('Data','appsettings.json')} | Copy-Item -Destination $code -Recurse
+  Get-ChildItem -LiteralPath $source -Force | Where-Object {$_.Name -notin @('Data','release.json','appsettings.json')} | Copy-Item -Destination $target -Recurse -Force
+  if(-not(Test-Path -LiteralPath (Join-Path $target 'appsettings.json'))){Copy-Item -LiteralPath (Join-Path $source 'appsettings.json') -Destination $target}
+  # Manifest last: a failed copy is retried rather than marked installed.
+  Copy-Item -LiteralPath $manifest -Destination $target -Force
+  Write-Output ('Installed AIWork '+$release.version+' in the original folder. Existing Data/configuration preserved. Backup: '+$backup)
+ } finally {if($lock){$lock.Dispose()}}
+}
+if(-not $PrepareOnly){& (Join-Path $target 'Start.ps1')}

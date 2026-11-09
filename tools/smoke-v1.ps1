@@ -30,6 +30,10 @@ try
     $actionsHtml=Get-Page '/Actions';$ids=[regex]::Matches($actionsHtml,'href="/Actions/Details/([a-fA-F0-9-]{36})"') | ForEach-Object {$_.Groups[1].Value};if(@($ids).Count -ne 3){throw 'Expected three action proposals'}
     $taskId=$null
     foreach($id in $ids){$actionPath='/Actions/Details/'+$id;$html=Get-Page $actionPath;$null=Expect-Redirect (Post-Form ('/Actions/Approve/'+$id) @{version=(Field $html 'version')} $actionPath);$html=Get-Page $actionPath;$taskId=[regex]::Match($html,'href="/Tasks/Details/([a-fA-F0-9-]{36})"').Groups[1].Value}
+    $otherTask=[regex]::Matches((Get-Page '/Tasks'),'href="/Tasks/Details/([a-fA-F0-9-]{36})"') | ForEach-Object {$_.Groups[1].Value} | Where-Object {$_ -ne $taskId} | Select-Object -First 1
+    $null=Expect-Redirect (Post-Form '/Dependencies/Add' @{taskId=$taskId;dependsOn=$otherTask} '/Dependencies')
+    $dashboard=Get-Page '/Dashboard/Data' | ConvertFrom-Json;if(@($dashboard.dependencies).Count -lt 1){throw 'Dashboard dependency relationship missing'}
+    if((Get-Page '/System/Version' | ConvertFrom-Json).version -ne '1.1.1'){throw 'Wrong release version'}
     $chatPath=Expect-Redirect (Post-Form '/Chat/Ask' @{text='Synthetic offline test, no company transmission'} '/');if((Get-Page $chatPath) -notmatch 'message-error'){throw 'Offline chat must be honest unavailable'}
     $backup=Post-Form '/Settings/Backup' @{} '/Settings';if([int]$backup.StatusCode -ne 200){throw 'Backup failed'};$backupPath=Join-Path $fixture 'smoke-backup.zip';[IO.File]::WriteAllBytes($backupPath,$backup.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult())
     $editPath='/Tasks/Edit/'+$taskId;$editHtml=Get-Page $editPath;$null=Expect-Redirect (Post-Form $editPath @{Id=$taskId;Title='Changed after backup';Version=(Field $editHtml 'Version');Status='0';Priority='1'} $editPath)

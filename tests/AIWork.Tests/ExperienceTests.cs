@@ -12,6 +12,11 @@ using Xunit;
 namespace AIWork.Tests;
 public class ExperienceTests
 {
+    [Fact]public async Task ProjectChatToolExposesCodeAndPersistsOnlyAfterApproval()
+    {
+        using var s=new TestStore();var tracking=new TrackingService(s.Db);var actions=new ActionService(s.Db,tracking);var tools=new ControlledTools(new ReadTools(s.Db),actions);var schema=tools.Definitions.Single(t=>t?["name"]?.GetValue<string>()=="create_project");Assert.NotNull(schema?["parameters"]?["properties"]?["code"]);
+        var conversation=new Conversation();var message=new ChatMessage{ConversationId=conversation.Id,Role="user",Content="Create synthetic project"};s.Db.Conversations.Add(conversation);s.Db.Messages.Add(message);await s.Db.SaveChangesAsync();var output=await tools.Run("create_project","{\"code\":\"CHAT-P\",\"title\":\"Synthetic project\",\"body\":\"Review only\"}",conversation,message.Id,default);Assert.Contains("PendingApproval",output);Assert.Empty(await s.Db.Projects.ToListAsync());var receipt=await s.Db.Actions.SingleAsync();await actions.Approve(receipt.Id,receipt.Version);var project=await s.Db.Projects.SingleAsync();Assert.Equal("CHAT-P",project.Code);Assert.Equal(Health.Unknown,project.Health);Assert.Null(project.CurrentTargetDate);
+    }
     [Fact]public void ValidPdfTextIsExtractedAndLongPdfIsBounded()
     {
         using var builder=new UglyToad.PdfPig.Writer.PdfDocumentBuilder();var font=builder.AddStandard14Font(UglyToad.PdfPig.Fonts.Standard14Fonts.Standard14Font.Helvetica);builder.AddPage(600,800).AddText("Synthetic PDF evidence",16,new UglyToad.PdfPig.Core.PdfPoint(20,700),font);var content=DocumentExtraction.Read(AttachmentService.Check("evidence.pdf",builder.Build()));Assert.Contains("Synthetic PDF evidence",content.Text);Assert.Equal(1,content.Pages);
