@@ -9,7 +9,12 @@ $oldLock=$null
 if((Test-Path -LiteralPath $nextData) -and -not(Test-Path -LiteralPath (Join-Path $nextData "AIWork.db"))){throw 'Target Data exists without database; inspect before transfer.'}
 try {
  if(Test-Path -LiteralPath $oldData){
-  try{$oldLock=[IO.File]::Open((Join-Path $oldData 'instance.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{throw 'Ban cu dang chay. Hay dong cua so AIWork cu (Ctrl+C), sau do chay lai Start.bat. Khong dung/xoa du lieu tu dong.'}
+  try{$oldLock=[IO.File]::Open((Join-Path $oldData 'instance.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{
+   if($PrepareOnly){throw 'Old AIWork is running. Close its console with Ctrl+C before upgrading.'}
+   Write-Output 'Ban cu dang chay: mo lai website hien tai. De nang cap V1.1, dong cua so AIWork cu bang Ctrl+C roi chay lai Start.bat. Du lieu chua bi sao chep/thay doi.'
+   & (Join-Path $old 'Start.ps1')
+   return
+  }
   if(-not(Test-Path -LiteralPath $nextData)){
    if(Test-Path -LiteralPath ($nextData+".staging")){throw 'Previous transfer incomplete; inspect Data.staging before retrying.'};$destination=$nextData+".staging";New-Item -ItemType Directory -Path $destination | Out-Null
    Get-ChildItem -LiteralPath $oldData -Force | Where-Object {$_.Name -notin @('instance.lock','AIWork.db-wal','AIWork.db-shm')} | Copy-Item -Destination $destination -Recurse

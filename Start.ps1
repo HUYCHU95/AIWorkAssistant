@@ -6,7 +6,16 @@ $port=5088
 $config=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'appsettings.json') -Raw | ConvertFrom-Json
 if($config.LocalPort){$port=[int]$config.LocalPort}
 if($port -lt 1024 -or $port -gt 65535){throw 'Invalid LocalPort: use 1024..65535.'}
-if(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue){throw "Port $port is already in use. Close the running app or change LocalPort in appsettings.json."}
+$url="http://127.0.0.1:$port/"
+try {
+ $running=Invoke-WebRequest ($url+'Account/Login') -UseBasicParsing -TimeoutSec 2
+ if($running.StatusCode -eq 200 -and $running.Content -match 'AIWork'){
+  Write-Output ('AIWork is already running. Opening '+$url)
+  Start-Process $url
+  return
+ }
+} catch {}
+if(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue){throw "Port $port is occupied by another service. Change LocalPort in appsettings.json."}
 # Browser helper stays hidden; web app keeps this console for graceful Ctrl+C.
 $helper=Start-Job -ArgumentList $port -ScriptBlock {
  param($p)

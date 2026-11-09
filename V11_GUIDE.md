@@ -1,7 +1,7 @@
 # V1.1 — khởi động và sử dụng
 
 1. Đóng cửa sổ ứng dụng cũ bằng Ctrl+C trước khi chuyển bản. Không chạy hai bản dùng hai bản sao dữ liệu đồng thời.
-2. Chạy `Start.bat` tại thư mục source. Script chọn bản `publish/AIWorkAssistant-1.1`, tự sao chép Data + cấu hình từ bản cũ duy nhất lần đầu khi ứng dụng cũ đã đóng. Bản cũ vẫn nguyên vẹn. Nếu bản cũ đang chạy, script dừng với hướng dẫn, không kill process.
+2. Chạy `Start.bat` tại thư mục source. Script chọn bản `publish/AIWorkAssistant-1.1`, tự sao chép Data + cấu hình từ bản cũ duy nhất lần đầu khi ứng dụng cũ đã đóng. Bản cũ vẫn nguyên vẹn. Nếu bản cũ đang chạy, Start mở lại website của bản cũ và hướng dẫn đóng bằng Ctrl+C trước khi nâng cấp; không kill process.
 3. Ứng dụng kiểm tra migration trên bản sao, sao lưu DB, rồi thêm 3 bảng V11Experience. Đăng nhập bằng tài khoản hiện có; API key cục bộ tiếp tục dùng trên cùng tài khoản Windows.
 4. Khi chuyển máy: đóng app, copy toàn bộ thư mục publish/AIWorkAssistant-1.1 gồm Data. Chạy Start.bat bên trong. Không cần .NET/SQL Server. Nhập lại API key/SMTP trong Integrations vì DPAPI gắn với tài khoản Windows cũ. Không copy dữ liệu thử trong artifacts.
 

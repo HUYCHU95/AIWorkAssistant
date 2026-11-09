@@ -40,3 +40,7 @@ Domain: Experience settings / analysis drafts / chat turns. Infrastructure: addi
 5. Mail integration from V1.0 retained; no real SMTP delivery tested here. No company information or keys committed. DevExtreme license and OpenAI key remain local.
 
 See V11_GUIDE.md for startup, transfer, permissions, file bounds and retry behavior. Published source is on the existing main branch after commit/push; runtime Data/publish/company workbook are intentionally outside Git.
+
+## Launcher fix — 2026-11-09
+Root cause: old published EXE still running (PID 24872), holding Data/instance.lock; old launcher threw before opening browser. Start now reopens the responsive local AIWork instance instead. Upgrade transfer still waits until old app closes; no process killed or data copied while locked. Start.ps1 probes local login before launching a second process. Verified PowerShell parsing, actual cmd /c Start.bat exit 0 and HTTP 200 at 127.0.0.1:5088. No C# or dependency changes; full solution rebuild unnecessary for this script fix.
+
